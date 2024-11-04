@@ -23,39 +23,44 @@ public class ClienteController {
         public void actionPerformed(ActionEvent e) {
             String ip = view.getIpServidor().getText();
             int porta = Integer.parseInt(view.getPortaServidor().getText());
-            try {
-                model.conectar(ip, porta);
-                view.getRetornoCliente().append("Conectado ao servidor!\n");
-            } catch (IOException ex) {
-                view.getRetornoCliente().append("Erro ao conectar ao servidor: " + ex.getMessage() + "\n");
-            }
+
+            // Iniciar conexão em uma nova thread
+            new Thread(() -> {
+                try {
+                    model.conectar(ip, porta);  // Método sincronizado
+                    view.getRetornoCliente().append("Conectado ao servidor!\n");
+                } catch (IOException ex) {
+                    view.getRetornoCliente().append("Erro ao conectar ao servidor: " + ex.getMessage() + "\n");
+                }
+            }).start();
         }
     }
 
     class EnviarMensagemListener implements ActionListener {
         public void actionPerformed(ActionEvent e) {
             String mensagem = view.getEntradaMsgCliente().getText();
-            try {
-                model.enviarMensagem(mensagem);
-                
-                // Adiciona a mensagem enviada pelo cliente
-                view.getRetornoCliente().append("Você: " + mensagem + "\n");
-                
-                // Receber a resposta do servidor
-                String resposta = model.receberResposta();
-                view.getRetornoCliente().append("Servidor: " + resposta + "\n");
-                
+            
+            // Enviar mensagem em uma nova thread
+            new Thread(() -> {
+                try {
+                    model.enviarMensagem(mensagem);  // Método sincronizado
+                    view.getRetornoCliente().append("Você: " + mensagem + "\n");
+                    
+                    // Receber a resposta do servidor
+                    String resposta = model.receberResposta();  // Método sincronizado
+                    view.getRetornoCliente().append("Servidor: " + resposta + "\n");
 
-                // Limpa o campo de entrada
-                view.getEntradaMsgCliente().setText("");
+                    // Limpa o campo de entrada
+                    view.getEntradaMsgCliente().setText("");
 
-                if (mensagem.equalsIgnoreCase("Bye")) {
-                    model.fecharConexao();
-                    view.getRetornoCliente().append("Conexão encerrada.\n");
+                    if (mensagem.equalsIgnoreCase("Bye")) {
+                        model.fecharConexao();  // Método sincronizado
+                        view.getRetornoCliente().append("Conexão encerrada.\n");
+                    }
+                } catch (IOException ex) {
+                    view.getRetornoCliente().append("Erro ao enviar mensagem: " + ex.getMessage() + "\n");
                 }
-            } catch (IOException ex) {
-                view.getRetornoCliente().append("Erro ao enviar mensagem: " + ex.getMessage() + "\n");
-            }
+            }).start();
         }
     }
 }

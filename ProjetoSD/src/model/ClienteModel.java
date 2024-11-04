@@ -8,21 +8,25 @@ public class ClienteModel {
     private PrintWriter saida;
     private BufferedReader entrada;
 
-    public void conectar(String ip, int porta) throws IOException {
+    // Conectar ao servidor (método sincronizado)
+    public synchronized void conectar(String ip, int porta) throws IOException {
         socketEcho = new Socket(ip, porta);
         saida = new PrintWriter(socketEcho.getOutputStream(), true);
         entrada = new BufferedReader(new InputStreamReader(socketEcho.getInputStream()));
     }
 
-    public void enviarMensagem(String mensagem) throws IOException {
+    // Enviar mensagem ao servidor (método sincronizado)
+    public synchronized void enviarMensagem(String mensagem) throws IOException {
         saida.println(mensagem);
     }
 
-    public String receberResposta() throws IOException {
+    // Receber resposta do servidor (método sincronizado)
+    public synchronized String receberResposta() throws IOException {
         return entrada.readLine();
     }
 
-    public void fecharConexao() throws IOException {
+    // Fechar a conexão (método sincronizado)
+    public synchronized void fecharConexao() throws IOException {
         if (saida != null) saida.close();
         if (entrada != null) entrada.close();
         if (socketEcho != null) socketEcho.close();

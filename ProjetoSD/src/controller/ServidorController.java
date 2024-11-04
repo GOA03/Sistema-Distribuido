@@ -5,16 +5,14 @@ import view.InterfaceServidorView;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.IOException;
+import java.net.Socket;
 
 public class ServidorController {
+	
     private InterfaceServidorView view;
-    private ServidorModel model;
-
+    
     public ServidorController(InterfaceServidorView view, ServidorModel model) {
         this.view = view;
-        this.model = model;
-        
-        // Listener para conectar o servidor
         this.view.adicionarActionListenerConectar(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
                 int porta = Integer.parseInt(view.getPortaServidor().getText());
@@ -22,64 +20,43 @@ public class ServidorController {
                     model.iniciarServidor(porta);
                     view.getRetornoServidor().append("Servidor iniciado na porta: " + porta + "\n");
                     view.getRetornoServidor().append("Esperando conexão...\n");
-                    
-                    // Aguarda conexão de cliente
+
+                    // Thread para aceitar conexões de clientes
                     new Thread(() -> {
-                        try {
-                            String msgConexao = model.esperarConexao();
-                            view.getRetornoServidor().append(msgConexao + "\n");
-                            ouvirMensagens();
-                        } catch (IOException ex) {
-                            view.getRetornoServidor().append("Erro ao aceitar conexão: " + ex.getMessage() + "\n");
+                        while (true) {
+                            try {
+                                Socket socketCliente = model.esperarConexao();
+                                model.lidarComCliente(socketCliente, new ServidorModel.ServidorListener() {
+                                    @Override
+                                    public void onConexao(String clienteInfo) {
+                                        view.getRetornoServidor().append("Nova conexão bem-sucedida com cliente: " + clienteInfo + "\n");
+                                    }
+
+                                    @Override
+                                    public void onMensagemRecebida(String mensagem) {
+                                        view.getRetornoServidor().append("Cliente: " + mensagem + "\n");
+                                    }
+
+                                    @Override
+                                    public void onDesconexao() {
+                                        view.getRetornoServidor().append("Cliente desconectou.\n");
+                                    }
+
+                                    @Override
+                                    public void onErro(String erro) {
+                                        view.getRetornoServidor().append(erro + "\n");
+                                    }
+                                });
+                            } catch (IOException ex) {
+                                view.getRetornoServidor().append("Erro ao aceitar conexão: " + ex.getMessage() + "\n");
+                                break;
+                            }
                         }
                     }).start();
-
                 } catch (IOException ex) {
                     view.getRetornoServidor().append("Erro ao iniciar servidor: " + ex.getMessage() + "\n");
                 }
             }
         });
     }
-
-    // Método para ouvir mensagens do cliente
-    private void ouvirMensagens() {
-        new Thread(() -> {
-            String mensagemRecebida;
-            try {
-                while ((mensagemRecebida = model.receberMensagem()) != null) {
-                    view.getRetornoServidor().append("Cliente: " + mensagemRecebida + "\n");
-
-                    if (mensagemRecebida.equalsIgnoreCase("bye")) {
-                        model.enviarMensagem("bye");  // Envia "bye" de volta ao cliente
-                        view.getRetornoServidor().append("Cliente desconectou.\n");
-                        model.fecharConexao();  // Fecha a conexão com o cliente
-                        break;  // Sai do loop e encerra a comunicação com o cliente
-                    }
-
-                    // Envia a resposta em maiúsculas para outras mensagens
-                    model.enviarResposta(mensagemRecebida);
-                }
-            } catch (IOException ex) {
-                view.getRetornoServidor().append("Erro na conexão: " + ex.getMessage() + "\n");
-            } finally {
-                try {
-                    model.fecharConexao(); // Garante que a conexão do cliente foi fechada
-                    view.getRetornoServidor().append("Aguardando nova conexão...\n");
-                    // Reinicia o processo de espera por um novo cliente
-                    new Thread(() -> {
-                        try {
-                            String msgConexao = model.esperarConexao();
-                            view.getRetornoServidor().append(msgConexao + "\n");
-                            ouvirMensagens(); // Começa a ouvir o novo cliente
-                        } catch (IOException ex) {
-                            view.getRetornoServidor().append("Erro ao aceitar conexão: " + ex.getMessage() + "\n");
-                        }
-                    }).start();
-                } catch (IOException e) {
-                    view.getRetornoServidor().append("Erro ao fechar a conexão: " + e.getMessage() + "\n");
-                }
-            }
-        }).start();
-    }
-
 }

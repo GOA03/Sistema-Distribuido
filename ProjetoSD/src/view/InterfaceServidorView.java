@@ -14,7 +14,6 @@ public class InterfaceServidorView extends JFrame {
     private JButton conectarServidor;
 
     public InterfaceServidorView() {
-    	
         setTitle("Servidor");
         setSize(500, 450);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
